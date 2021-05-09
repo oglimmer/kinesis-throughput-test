@@ -2,11 +2,12 @@ logging:
   level:
     de.oglimmer: info
     de.oglimmer.kinesis.ReqRespVerifier: info
-    de.oglimmer.kinesis.DataReceiver: debug
+    de.oglimmer.kinesis.DataReceiver: info
 
 shardsToRead: 0
 dataGenerationSpeed: 1
 waitTimeInBetweenRead: 1000
-payloadSize: 4000
+payloadSize: 2000
+# payloadSize: 4000 this will exceed the throughput
 dataGenerationThread: 5
 asyncSenderThread: 5

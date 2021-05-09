@@ -32,6 +32,12 @@ public class DataGenerator {
     }
 
     public void run() {
+        try {
+            Thread.sleep(5000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+            Thread.currentThread().interrupt();
+        }
         while (true) {
             BusMessage busMessage = createRequest(origin);
             dataSender.sendData(stream, busMessage, false);

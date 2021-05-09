@@ -23,11 +23,13 @@ public class AdminController {
         buff.append("\r\n");
         buff.append("Unanswered Reqs=" + reqRespVerifier.getRequestUUIDs().size());
         buff.append("\r\n");
-        buff.append("Oldest unanswered req=" + reqRespVerifier.getRequestUUIDs().values()
-                .stream()
-                .min(Comparator.comparing(BusMessage::getCreationTime))
-                .get().getCreationTime());
-        buff.append("\r\n");
+        if(reqRespVerifier.getRequestUUIDs().size() > 0) {
+            buff.append("Oldest unanswered req=" + reqRespVerifier.getRequestUUIDs().values()
+                    .stream()
+                    .min(Comparator.comparing(BusMessage::getCreationTime))
+                    .get().getCreationTime());
+            buff.append("\r\n");
+        }
         runtimeStatistics.getStreamStatsMap().entrySet().stream().forEach(e -> {
             buff.append("********Stream: " + e.getKey().name() + "*********");
             buff.append("\r\n");

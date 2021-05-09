@@ -10,7 +10,7 @@ import java.util.UUID;
 
 @Getter
 @Setter
-@ToString
+@ToString(exclude = "payload")
 public class BusMessage implements Serializable {
 
     private MessageType messageType;
