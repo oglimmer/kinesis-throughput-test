@@ -1,0 +1,5 @@
+
+mode: TRANSCEIVER
+
+server:
+  port: 8082

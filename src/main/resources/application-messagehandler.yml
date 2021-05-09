@@ -1,0 +1,6 @@
+
+mode: MESSAGEHANDLER
+
+server:
+  port: 8081
+
