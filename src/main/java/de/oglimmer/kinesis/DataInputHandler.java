@@ -12,7 +12,7 @@ import java.util.function.Consumer;
 public class DataInputHandler implements Consumer<BusMessage> {
 
     private final DataReceiver dataReceiver;
-    private final DataSender dataSender;
+    private final AsyncDataSender asyncDataSender;
     private final RuntimeStatistics runtimeStatistics;
     private final ReqRespVerifier reqRespVerifier;
 
@@ -20,21 +20,21 @@ public class DataInputHandler implements Consumer<BusMessage> {
     private Stream replyStream;
     private Origin noResponseFor;
 
-    public void start(Stream listenStream, Stream replyStream, int shartNo, Origin noResponseFor) {
+    public void start(Stream listenStream, Stream replyStream, Origin noResponseFor) {
         if (listenStream == replyStream) {
             throw new IllegalArgumentException();
         }
         this.listenStream = listenStream;
         this.replyStream = replyStream;
         this.noResponseFor = noResponseFor;
-        dataReceiver.start(listenStream, this, shartNo);
+        dataReceiver.start(listenStream, this);
     }
 
     @Override
     public void accept(BusMessage busMessage) {
-        log.debug("Received from {} : {}", listenStream.name(), busMessage.toString());
         if (busMessage.getOrigin() != noResponseFor) {
-            dataSender.sendData(replyStream, new BusMessage(busMessage), true);
+            log.debug("Received (and will reply) from {} : {}", listenStream.name(), busMessage);
+            asyncDataSender.sendData(replyStream, new BusMessage(busMessage));
             runtimeStatistics.getStreamStatsMap().get(listenStream).incRecordAnswere();
         } else {
             reqRespVerifier.unregister(busMessage);

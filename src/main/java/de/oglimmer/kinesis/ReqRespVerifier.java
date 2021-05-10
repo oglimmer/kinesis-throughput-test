@@ -6,7 +6,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Component
@@ -17,14 +16,14 @@ public class ReqRespVerifier {
     private final RuntimeStatistics runtimeStatistics;
 
     @Getter
-    private Map<UUID, BusMessage> requestUUIDs = new ConcurrentHashMap<>();
+    private Map<String, BusMessage> requestUUIDs = new ConcurrentHashMap<>();
 
     public void register(BusMessage request) {
         log.debug("Adding req {}", request.getUuid());
         requestUUIDs.put(request.getUuid(), request);
     }
 
-    public void unregister(BusMessage response) {
+    public synchronized void unregister(BusMessage response) {
         if (!requestUUIDs.containsKey(response.getUuid())) {
             log.error("Failed to find req for {}", response.getUuid());
         } else {

@@ -26,8 +26,7 @@ dependencies {
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 
 
-	implementation 'software.amazon.awssdk:kinesis:2.16.59'
-
+	implementation 'software.amazon.kinesis:amazon-kinesis-client:2.3.4'
 }
 
 test {

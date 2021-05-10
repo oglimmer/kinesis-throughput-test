@@ -22,14 +22,10 @@ public class ModeConfiguration {
         runtimeStatistics.init();
         if (runtimeConfiguration.getMode() == Mode.TRANSCEIVER) {
             dataGenerator.start(Stream.INBOUND, Origin.TRANSCEIVER);
-            for (int shardNo : runtimeConfiguration.getShardsToReadArray()) {
-                dataInputHandler.start(Stream.OUTBOUND, Stream.INBOUND, shardNo, Origin.TRANSCEIVER);
-            }
+            dataInputHandler.start(Stream.OUTBOUND, Stream.INBOUND, Origin.TRANSCEIVER);
         } else if (runtimeConfiguration.getMode() == Mode.MESSAGEHANDLER) {
             dataGenerator.start(Stream.OUTBOUND, Origin.MESSAGEHANDLER);
-            for (int shardNo : runtimeConfiguration.getShardsToReadArray()) {
-                dataInputHandler.start(Stream.INBOUND, Stream.OUTBOUND, shardNo, Origin.MESSAGEHANDLER);
-            }
+            dataInputHandler.start(Stream.INBOUND, Stream.OUTBOUND, Origin.MESSAGEHANDLER);
         } else {
             log.warn("Illegal mode {} !!!", runtimeConfiguration.getMode());
         }

@@ -10,11 +10,14 @@ import software.amazon.awssdk.services.kinesis.KinesisAsyncClient;
 public class KinesisClient {
 
     @Getter
+    private Region region = Region.EU_CENTRAL_1;
+
+    @Getter
     private KinesisAsyncClient client = getKinesisAsyncClient();
 
     private KinesisAsyncClient getKinesisAsyncClient() {
         return KinesisAsyncClient.builder()
-                .region(Region.EU_CENTRAL_1)
+                .region(region)
                 .credentialsProvider(ProfileCredentialsProvider.create("sy"))
                 .build();
     }

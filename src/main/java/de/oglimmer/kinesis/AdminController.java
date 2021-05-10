@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Comparator;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/v1/admin")
@@ -48,6 +49,12 @@ public class AdminController {
             buff.append("roundTripTimeAvg=" + e.getValue().getRoundTripTimeLastMinuteAvg());
             buff.append("\r\n");
         });
+        if(reqRespVerifier.getRequestUUIDs().size() > 0) {
+            buff.append("Unanswered=" + reqRespVerifier.getRequestUUIDs().values()
+                    .stream()
+                    .map(e -> e.getUuid()).collect(Collectors.toList()));
+            buff.append("\r\n");
+        }
         return buff.toString();
     }
 

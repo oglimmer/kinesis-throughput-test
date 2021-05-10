@@ -6,23 +6,24 @@ import lombok.ToString;
 
 import java.io.Serializable;
 import java.time.Instant;
-import java.util.UUID;
 
 @Getter
 @Setter
 @ToString(exclude = "payload")
 public class BusMessage implements Serializable {
 
+    private static long counter = 0;
+
     private MessageType messageType;
     private Origin origin;
-    private UUID uuid;
+    private String uuid;
     private Instant creationTime;
     private String payload;
 
     public BusMessage(Origin origin, String payload) {
         this.messageType = MessageType.REQUEST;
         this.origin = origin;
-        this.uuid = UUID.randomUUID();
+        this.uuid = Long.toString(counter++);
         this.creationTime = Instant.now();
         this.payload = payload;
     }
