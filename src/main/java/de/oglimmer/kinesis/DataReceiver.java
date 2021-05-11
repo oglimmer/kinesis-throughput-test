@@ -32,47 +32,53 @@ public class DataReceiver {
 
     private final KinesisClient kinesis;
 
-    private Consumer<BusMessage> consumer;
-    private Stream stream;
-
     public void start(Stream stream, Consumer<BusMessage> consumer) {
-        if (this.consumer != null) {
-            throw new IllegalArgumentException();
-        }
-        this.consumer = consumer;
-        this.stream = stream;
-        init();
-        log.info("Started DataReceiver for {}", stream.name());
+        DataReceiverStream dataReceiverStream = new DataReceiverStream();
+        dataReceiverStream.start(stream, consumer);
     }
 
-    private void init() {
-        DynamoDbAsyncClient dynamoClient = DynamoDbAsyncClient.builder().region(kinesis.getRegion()).build();
+    class DataReceiverStream {
 
-        CloudWatchAsyncClient cloudWatchClient = CloudWatchAsyncClient.builder().region(kinesis.getRegion()).build();
+        private Consumer<BusMessage> consumer;
+        private Stream stream;
 
-        ConfigsBuilder configsBuilder = new ConfigsBuilder(
-                stream.getDataStreamName(),
-                stream.getDataStreamName(),
-                kinesis.getClient(),
-                dynamoClient,
-                cloudWatchClient,
-                UUID.randomUUID().toString(),
-                new SampleRecordProcessorFactory(consumer));
+        public void start(Stream stream, Consumer<BusMessage> consumer) {
+            this.consumer = consumer;
+            this.stream = stream;
+            init();
+            log.info("Started DataReceiver for {}", stream.name());
+        }
 
-        Scheduler scheduler = new Scheduler(
-                configsBuilder.checkpointConfig(),
-                configsBuilder.coordinatorConfig(),
-                configsBuilder.leaseManagementConfig(),
-                configsBuilder.lifecycleConfig(),
-                configsBuilder.metricsConfig(),
-                configsBuilder.processorConfig(),
-                configsBuilder.retrievalConfig()
-                        .retrievalSpecificConfig(new PollingConfig(stream.getDataStreamName(), kinesis.getClient()))
-        );
+        private void init() {
+            DynamoDbAsyncClient dynamoClient = DynamoDbAsyncClient.builder().region(kinesis.getRegion()).build();
 
-        Thread schedulerThread = new Thread(scheduler);
-        schedulerThread.setDaemon(true);
-        schedulerThread.start();
+            CloudWatchAsyncClient cloudWatchClient = CloudWatchAsyncClient.builder().region(kinesis.getRegion()).build();
+
+            ConfigsBuilder configsBuilder = new ConfigsBuilder(
+                    stream.getDataStreamName(),
+                    stream.getDataStreamName(),
+                    kinesis.getClient(),
+                    dynamoClient,
+                    cloudWatchClient,
+                    UUID.randomUUID().toString(),
+                    new SampleRecordProcessorFactory(consumer));
+
+            Scheduler scheduler = new Scheduler(
+                    configsBuilder.checkpointConfig(),
+                    configsBuilder.coordinatorConfig(),
+                    configsBuilder.leaseManagementConfig(),
+                    configsBuilder.lifecycleConfig(),
+                    configsBuilder.metricsConfig(),
+                    configsBuilder.processorConfig(),
+                    configsBuilder.retrievalConfig()
+                            .retrievalSpecificConfig(new PollingConfig(stream.getDataStreamName(), kinesis.getClient()))
+            );
+
+            Thread schedulerThread = new Thread(scheduler);
+            schedulerThread.setDaemon(true);
+            schedulerThread.start();
+        }
+
     }
 
     @AllArgsConstructor
@@ -155,5 +161,4 @@ public class DataReceiver {
             }
         }
     }
-
 }

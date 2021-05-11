@@ -68,17 +68,17 @@ public class AdminController {
 
     @PostMapping("start")
     public void startDataGen() {
-        dataGenerator.start();
+        dataGenerator.getData().get(Stream.INBOUND).start();
     }
 
     @PostMapping("stop")
     public void stopDataGen() {
-        dataGenerator.stop();
+        dataGenerator.getData().get(Stream.INBOUND).stop();
     }
 
     @PostMapping("set-rate")
     public void setDataGenRate(@RequestBody long rate) {
-        dataGenerator.setDataRate(rate);
+        dataGenerator.getData().get(Stream.INBOUND).setDataRate(rate);
     }
 
 }
