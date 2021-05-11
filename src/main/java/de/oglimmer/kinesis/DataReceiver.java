@@ -36,6 +36,9 @@ public class DataReceiver {
     private Stream stream;
 
     public void start(Stream stream, Consumer<BusMessage> consumer) {
+        if (this.consumer != null) {
+            throw new IllegalArgumentException();
+        }
         this.consumer = consumer;
         this.stream = stream;
         init();
@@ -44,9 +47,16 @@ public class DataReceiver {
 
     private void init() {
         DynamoDbAsyncClient dynamoClient = DynamoDbAsyncClient.builder().region(kinesis.getRegion()).build();
+
         CloudWatchAsyncClient cloudWatchClient = CloudWatchAsyncClient.builder().region(kinesis.getRegion()).build();
-        ConfigsBuilder configsBuilder = new ConfigsBuilder(stream.getDataStreamName(), stream.getDataStreamName(),
-                kinesis.getClient(), dynamoClient, cloudWatchClient, UUID.randomUUID().toString(),
+
+        ConfigsBuilder configsBuilder = new ConfigsBuilder(
+                stream.getDataStreamName(),
+                stream.getDataStreamName(),
+                kinesis.getClient(),
+                dynamoClient,
+                cloudWatchClient,
+                UUID.randomUUID().toString(),
                 new SampleRecordProcessorFactory(consumer));
 
         Scheduler scheduler = new Scheduler(

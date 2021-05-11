@@ -21,10 +21,10 @@ public class ModeConfiguration {
         log.info("Using mode {}", runtimeConfiguration.getMode());
         runtimeStatistics.init();
         if (runtimeConfiguration.getMode() == Mode.TRANSCEIVER) {
-            dataGenerator.start(Stream.INBOUND, Origin.TRANSCEIVER);
+            dataGenerator.init(Stream.INBOUND, Origin.TRANSCEIVER);
             dataInputHandler.start(Stream.OUTBOUND, Stream.INBOUND, Origin.TRANSCEIVER);
         } else if (runtimeConfiguration.getMode() == Mode.MESSAGEHANDLER) {
-            dataGenerator.start(Stream.OUTBOUND, Origin.MESSAGEHANDLER);
+//            dataGenerator.start(Stream.OUTBOUND, Origin.MESSAGEHANDLER);
             dataInputHandler.start(Stream.INBOUND, Stream.OUTBOUND, Origin.MESSAGEHANDLER);
         } else {
             log.warn("Illegal mode {} !!!", runtimeConfiguration.getMode());

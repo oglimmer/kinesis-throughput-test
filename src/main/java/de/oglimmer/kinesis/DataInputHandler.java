@@ -24,6 +24,9 @@ public class DataInputHandler implements Consumer<BusMessage> {
         if (listenStream == replyStream) {
             throw new IllegalArgumentException();
         }
+        if (this.listenStream != null) {
+            throw new IllegalArgumentException();
+        }
         this.listenStream = listenStream;
         this.replyStream = replyStream;
         this.noResponseFor = noResponseFor;

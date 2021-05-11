@@ -2,6 +2,8 @@ package de.oglimmer.kinesis;
 
 import lombok.AllArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -16,6 +18,7 @@ public class AdminController {
     private RuntimeConfiguration runtimeConfiguration;
     private RuntimeStatistics runtimeStatistics;
     private ReqRespVerifier reqRespVerifier;
+    private DataGenerator dataGenerator;
 
     @GetMapping("stats")
     public String getStats() {
@@ -49,13 +52,33 @@ public class AdminController {
             buff.append("roundTripTimeAvg=" + e.getValue().getRoundTripTimeLastMinuteAvg());
             buff.append("\r\n");
         });
-        if(reqRespVerifier.getRequestUUIDs().size() > 0) {
+        if (reqRespVerifier.getRequestUUIDs().size() > 0) {
             buff.append("Unanswered=" + reqRespVerifier.getRequestUUIDs().values()
                     .stream()
                     .map(e -> e.getUuid()).collect(Collectors.toList()));
             buff.append("\r\n");
         }
         return buff.toString();
+    }
+
+    @PostMapping("reset")
+    public void resetReqs() {
+        reqRespVerifier.getRequestUUIDs().clear();
+    }
+
+    @PostMapping("start")
+    public void startDataGen() {
+        dataGenerator.start();
+    }
+
+    @PostMapping("stop")
+    public void stopDataGen() {
+        dataGenerator.stop();
+    }
+
+    @PostMapping("set-rate")
+    public void setDataGenRate(@RequestBody long rate) {
+        dataGenerator.setDataRate(rate);
     }
 
 }

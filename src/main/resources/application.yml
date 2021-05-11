@@ -2,7 +2,7 @@ logging:
   level:
     de.oglimmer: info
 
-dataGenerationSpeed: 2
+dataGenerationSpeed: 10
 payloadSize: 2000
 dataGenerationThread: 5
 asyncSenderThread: 5

@@ -2,6 +2,8 @@ package de.oglimmer.kinesis;
 
 import lombok.Getter;
 import org.springframework.stereotype.Component;
+import software.amazon.awssdk.auth.credentials.AwsCredentialsProviderChain;
+import software.amazon.awssdk.auth.credentials.InstanceProfileCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.ProfileCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.kinesis.KinesisAsyncClient;
@@ -18,7 +20,7 @@ public class KinesisClient {
     private KinesisAsyncClient getKinesisAsyncClient() {
         return KinesisAsyncClient.builder()
                 .region(region)
-                .credentialsProvider(ProfileCredentialsProvider.create("sy"))
+                .credentialsProvider(AwsCredentialsProviderChain.of(InstanceProfileCredentialsProvider.builder().build(), ProfileCredentialsProvider.create("sy")))
                 .build();
     }
 
