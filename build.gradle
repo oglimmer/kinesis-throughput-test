@@ -26,7 +26,10 @@ dependencies {
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 
 
-	implementation 'software.amazon.kinesis:amazon-kinesis-client:2.3.4'
+//	implementation 'software.amazon.kinesis:amazon-kinesis-client:2.3.4'
+	implementation 'com.amazonaws:amazon-kinesis-client:1.14.3'
+	implementation 'com.amazonaws:amazon-kinesis-producer:0.14.6'
+
 }
 
 test {

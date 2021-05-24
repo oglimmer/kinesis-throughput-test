@@ -1,13 +1,19 @@
 package de.oglimmer.kinesis;
 
+import com.amazonaws.auth.profile.ProfileCredentialsProvider;
+import com.amazonaws.services.kinesis.producer.KinesisProducer;
+import com.amazonaws.services.kinesis.producer.KinesisProducerConfiguration;
+import com.amazonaws.services.kinesis.producer.UserRecord;
+import com.amazonaws.services.kinesis.producer.UserRecordResult;
+import com.google.common.util.concurrent.ListenableFuture;
 import lombok.RequiredArgsConstructor;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
-import software.amazon.awssdk.core.SdkBytes;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.UUID;
-import java.util.concurrent.ExecutionException;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -16,20 +22,30 @@ public class DataSender {
 
     private final KinesisClient kinesis;
 
+    private KinesisProducer kinesisProducer;
+
+    {
+        KinesisProducerConfiguration kinesisProducerConfiguration = new KinesisProducerConfiguration();
+        kinesisProducerConfiguration.setCredentialsProvider(new ProfileCredentialsProvider("sy"));
+        kinesisProducerConfiguration.setRegion("eu-central-1");
+
+        kinesisProducer = new KinesisProducer(kinesisProducerConfiguration);
+    }
+
+    @SneakyThrows
     public void sendData(Stream stream, BusMessage busMessage) {
+        final UserRecord userRecord = new UserRecord();
+        userRecord.setStreamName(stream.getDataStreamName());
+        userRecord.setPartitionKey(UUID.randomUUID().toString());
         try {
-            SdkBytes sdkBytes = SdkBytes.fromByteArray(SerialHelper.toString(busMessage));
-            kinesis.getClient().putRecord(builder ->
-                    builder.streamName(stream
-                            .getDataStreamName())
-                            .partitionKey(UUID.randomUUID().toString())
-                            .data(sdkBytes))
-                    .get();
-            log.debug("Sent {} for {} into {} : {}", busMessage.getMessageType(), busMessage.getOrigin(), stream.name(),
-                    busMessage.getUuid());
-        } catch (IOException | InterruptedException | ExecutionException e) {
-            log.error("Failed to sendData", e);
+            userRecord.setData(ByteBuffer.wrap(SerialHelper.toString(busMessage)));
+        } catch (IOException e) {
+            e.printStackTrace();
         }
+
+        final ListenableFuture<UserRecordResult> userRecordResultListenableFuture = kinesisProducer.addUserRecord(userRecord);
+        log.debug("Sent {} for {} into {} : {} to SHARD: {}", busMessage.getMessageType(), busMessage.getOrigin(),
+                stream.name(), busMessage.getUuid(), userRecordResultListenableFuture.get().getShardId());
     }
 
 }

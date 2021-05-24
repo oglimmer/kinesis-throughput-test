@@ -1,7 +1,5 @@
 package de.oglimmer.kinesis;
 
-import software.amazon.awssdk.core.SdkBytes;
-
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -17,12 +15,6 @@ public class SerialHelper {
         try (ObjectOutputStream oos = new ObjectOutputStream(baos)) {
             oos.writeObject(o);
             return baos.toByteArray();
-        }
-    }
-
-    public static Object fromString(SdkBytes sdkBytes) throws IOException, ClassNotFoundException {
-        try (ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(sdkBytes.asByteArray()))) {
-            return ois.readObject();
         }
     }
 

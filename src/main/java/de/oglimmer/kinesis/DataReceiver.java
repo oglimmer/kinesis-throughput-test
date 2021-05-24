@@ -1,27 +1,27 @@
 package de.oglimmer.kinesis;
 
+import com.amazonaws.auth.profile.ProfileCredentialsProvider;
+import com.amazonaws.services.kinesis.clientlibrary.exceptions.InvalidStateException;
+import com.amazonaws.services.kinesis.clientlibrary.exceptions.ShutdownException;
+import com.amazonaws.services.kinesis.clientlibrary.interfaces.v2.IRecordProcessor;
+import com.amazonaws.services.kinesis.clientlibrary.interfaces.v2.IRecordProcessorFactory;
+import com.amazonaws.services.kinesis.clientlibrary.lib.worker.KinesisClientLibConfiguration;
+import com.amazonaws.services.kinesis.clientlibrary.lib.worker.ShardSyncStrategyType;
+import com.amazonaws.services.kinesis.clientlibrary.lib.worker.Worker;
+import com.amazonaws.services.kinesis.clientlibrary.types.InitializationInput;
+import com.amazonaws.services.kinesis.clientlibrary.types.ProcessRecordsInput;
+import com.amazonaws.services.kinesis.clientlibrary.types.ShutdownInput;
 import lombok.AllArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.stereotype.Component;
-import software.amazon.awssdk.services.cloudwatch.CloudWatchAsyncClient;
-import software.amazon.awssdk.services.dynamodb.DynamoDbAsyncClient;
-import software.amazon.kinesis.common.ConfigsBuilder;
-import software.amazon.kinesis.coordinator.Scheduler;
-import software.amazon.kinesis.exceptions.InvalidStateException;
-import software.amazon.kinesis.exceptions.ShutdownException;
-import software.amazon.kinesis.lifecycle.events.InitializationInput;
-import software.amazon.kinesis.lifecycle.events.LeaseLostInput;
-import software.amazon.kinesis.lifecycle.events.ProcessRecordsInput;
-import software.amazon.kinesis.lifecycle.events.ShardEndedInput;
-import software.amazon.kinesis.lifecycle.events.ShutdownRequestedInput;
-import software.amazon.kinesis.processor.ShardRecordProcessor;
-import software.amazon.kinesis.processor.ShardRecordProcessorFactory;
-import software.amazon.kinesis.retrieval.polling.PollingConfig;
 
 import java.io.IOException;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.UUID;
+import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 
 
@@ -37,85 +37,43 @@ public class DataReceiver {
         dataReceiverStream.start(stream, consumer);
     }
 
-    class DataReceiverStream {
-
-        private Consumer<BusMessage> consumer;
-        private Stream stream;
-
-        public void start(Stream stream, Consumer<BusMessage> consumer) {
-            this.consumer = consumer;
-            this.stream = stream;
-            init();
-            log.info("Started DataReceiver for {}", stream.name());
-        }
-
-        private void init() {
-            DynamoDbAsyncClient dynamoClient = DynamoDbAsyncClient.builder().region(kinesis.getRegion()).build();
-
-            CloudWatchAsyncClient cloudWatchClient = CloudWatchAsyncClient.builder().region(kinesis.getRegion()).build();
-
-            ConfigsBuilder configsBuilder = new ConfigsBuilder(
-                    stream.getDataStreamName(),
-                    stream.getDataStreamName(),
-                    kinesis.getClient(),
-                    dynamoClient,
-                    cloudWatchClient,
-                    UUID.randomUUID().toString(),
-                    new SampleRecordProcessorFactory(consumer));
-
-            Scheduler scheduler = new Scheduler(
-                    configsBuilder.checkpointConfig(),
-                    configsBuilder.coordinatorConfig(),
-                    configsBuilder.leaseManagementConfig(),
-                    configsBuilder.lifecycleConfig(),
-                    configsBuilder.metricsConfig(),
-                    configsBuilder.processorConfig(),
-                    configsBuilder.retrievalConfig()
-                            .retrievalSpecificConfig(new PollingConfig(stream.getDataStreamName(), kinesis.getClient()))
-            );
-
-            Thread schedulerThread = new Thread(scheduler);
-            schedulerThread.setDaemon(true);
-            schedulerThread.start();
-        }
-
-    }
-
     @AllArgsConstructor
-    private static class SampleRecordProcessorFactory implements ShardRecordProcessorFactory {
+    private static class SampleRecordProcessorFactory implements IRecordProcessorFactory {
         private Consumer<BusMessage> consumer;
 
-        public ShardRecordProcessor shardRecordProcessor() {
+        @Override
+        public IRecordProcessor createProcessor() {
             return new SampleRecordProcessor(consumer);
         }
     }
 
     @Slf4j
     @RequiredArgsConstructor
-    private static class SampleRecordProcessor implements ShardRecordProcessor {
+    private static class SampleRecordProcessor implements IRecordProcessor {
 
         private static final String SHARD_ID_MDC_KEY = "ShardId";
         private final Consumer<BusMessage> consumer;
         private String shardId;
 
         public void initialize(InitializationInput initializationInput) {
-            shardId = initializationInput.shardId();
+            shardId = initializationInput.getShardId();
             MDC.put(SHARD_ID_MDC_KEY, shardId);
             try {
-                log.info("Initializing @ Sequence: {}", initializationInput.extendedSequenceNumber());
+                log.info("Initializing for {} @ Sequence: {}", shardId, initializationInput.getExtendedSequenceNumber());
             } finally {
                 MDC.remove(SHARD_ID_MDC_KEY);
             }
         }
 
+        @Override
         public void processRecords(ProcessRecordsInput processRecordsInput) {
             MDC.put(SHARD_ID_MDC_KEY, shardId);
             try {
-                log.debug("Processing {} record(s)", processRecordsInput.records().size());
-                processRecordsInput.records().forEach(r -> {
-                    log.debug("Processing record pk: {} -- Seq: {}", r.partitionKey(), r.sequenceNumber());
+                log.debug("Processing {} record(s) on {}", processRecordsInput.getRecords().size(), shardId);
+                processRecordsInput.getRecords().forEach(r -> {
+                    log.debug("Processing record pk: {} -- Seq: {}", r.getPartitionKey(), r.getSequenceNumber());
                     try {
-                        consumer.accept((BusMessage) SerialHelper.fromString(r.data()));
+                        consumer.accept((BusMessage) SerialHelper.fromString(r.getData()));
                     } catch (IOException | ClassNotFoundException e) {
                         log.error("Failed to consume record", e);
                     }
@@ -128,37 +86,57 @@ public class DataReceiver {
             }
         }
 
-        public void leaseLost(LeaseLostInput leaseLostInput) {
-            MDC.put(SHARD_ID_MDC_KEY, shardId);
+        @Override
+        public void shutdown(ShutdownInput shutdownInput) {
             try {
-                log.info("Lost lease, so terminating.");
-            } finally {
-                MDC.remove(SHARD_ID_MDC_KEY);
+                shutdownInput.getCheckpointer().checkpoint();
+            } catch (InvalidStateException e) {
+                e.printStackTrace();
+            } catch (ShutdownException e) {
+                e.printStackTrace();
             }
         }
 
-        public void shardEnded(ShardEndedInput shardEndedInput) {
-            MDC.put(SHARD_ID_MDC_KEY, shardId);
+    }
+
+    class DataReceiverStream {
+
+        private Consumer<BusMessage> consumer;
+        private Stream stream;
+
+        public void start(Stream stream, Consumer<BusMessage> consumer) {
+            this.consumer = consumer;
+            this.stream = stream;
+            Executors.newSingleThreadExecutor().submit(() -> init());
+        }
+
+        private void init() {
+            log.info("Started DataReceiver for {}", stream.name());
             try {
-                log.info("Reached shard end checkpointing.");
-                shardEndedInput.checkpointer().checkpoint();
-            } catch (ShutdownException | InvalidStateException e) {
-                log.error("Exception while checkpointing at shard end. Giving up.", e);
-            } finally {
-                MDC.remove(SHARD_ID_MDC_KEY);
+                final KinesisClientLibConfiguration config = new KinesisClientLibConfiguration(
+                        stream.getDataStreamName(),
+                        stream.getDataStreamName(),
+                        new ProfileCredentialsProvider("sy"),
+                        InetAddress.getLocalHost().getCanonicalHostName() + ":" + UUID.randomUUID()
+                );
+                config.withRegionName("eu-central-1");
+//                config.withShardSyncStrategyType(ShardSyncStrategyType.PERIODIC);
+                final IRecordProcessorFactory recordProcessorFactory = new SampleRecordProcessorFactory(consumer);
+                {
+                    final Worker worker = new Worker.Builder()
+                            .recordProcessorFactory(recordProcessorFactory)
+                            .config(config)
+                            .build();
+                    try {
+                        worker.run();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+            } catch (UnknownHostException e) {
+                e.printStackTrace();
             }
         }
 
-        public void shutdownRequested(ShutdownRequestedInput shutdownRequestedInput) {
-            MDC.put(SHARD_ID_MDC_KEY, shardId);
-            try {
-                log.info("Scheduler is shutting down, checkpointing.");
-                shutdownRequestedInput.checkpointer().checkpoint();
-            } catch (ShutdownException | InvalidStateException e) {
-                log.error("Exception while checkpointing at requested shutdown. Giving up.", e);
-            } finally {
-                MDC.remove(SHARD_ID_MDC_KEY);
-            }
-        }
     }
 }

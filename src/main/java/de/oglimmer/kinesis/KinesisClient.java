@@ -1,26 +1,21 @@
 package de.oglimmer.kinesis;
 
+import com.amazonaws.auth.profile.ProfileCredentialsProvider;
+import com.amazonaws.regions.Regions;
+import com.amazonaws.services.kinesis.AmazonKinesis;
+import com.amazonaws.services.kinesis.AmazonKinesisClient;
 import lombok.Getter;
 import org.springframework.stereotype.Component;
-import software.amazon.awssdk.auth.credentials.AwsCredentialsProviderChain;
-import software.amazon.awssdk.auth.credentials.InstanceProfileCredentialsProvider;
-import software.amazon.awssdk.auth.credentials.ProfileCredentialsProvider;
-import software.amazon.awssdk.regions.Region;
-import software.amazon.awssdk.services.kinesis.KinesisAsyncClient;
 
 @Component
 public class KinesisClient {
 
     @Getter
-    private Region region = Region.EU_CENTRAL_1;
+    private AmazonKinesis client = getKinesisAsyncClient();
 
-    @Getter
-    private KinesisAsyncClient client = getKinesisAsyncClient();
-
-    private KinesisAsyncClient getKinesisAsyncClient() {
-        return KinesisAsyncClient.builder()
-                .region(region)
-                .credentialsProvider(AwsCredentialsProviderChain.of(InstanceProfileCredentialsProvider.builder().build(), ProfileCredentialsProvider.create("sy")))
+    private AmazonKinesis getKinesisAsyncClient() {
+        return AmazonKinesisClient.builder().withRegion(Regions.EU_CENTRAL_1)
+                .withCredentials(new ProfileCredentialsProvider("sy"))
                 .build();
     }
 
